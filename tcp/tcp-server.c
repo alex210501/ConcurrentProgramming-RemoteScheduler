@@ -1,6 +1,26 @@
 #include "tcp-defs.h"
+#include "tcp-server.h"
 
-void init_tcp_server(int port)  {
+#define MAX_BUF_SIZE (100)
+
+static void default_callback(int connfd) {
+    char buf[MAX_BUF_SIZE];
+
+    for (;;) {
+        memset(buf, 0, MAX_BUF_SIZE);
+
+        // Read data received by the client
+        read(connfd, buf, MAX_BUF_SIZE);
+
+        // TODO - Debug print
+        printf("Data received: %s\n", buf);
+
+        snprintf(buf, MAX_BUF_SIZE, "Yep");
+        write(connfd, buf, strlen(buf));
+    }    
+}
+
+void init_tcp_server(tcp_server_callback_t callback, int port)  {
     int sockfd, connfd;
     socklen_t len;
     sockaddr_in_t servaddr, cli;
@@ -39,13 +59,16 @@ void init_tcp_server(int port)  {
         exit(0); 
     }
 
+    // TCP handler
+    callback(connfd);
+
     // After chatting close the socket 
     close(sockfd); 
 }
 
 int main() {
     printf("Starting demo for TCP server...\n");
-    init_tcp_server(8080);
+    init_tcp_server(default_callback, 8080);
 
     return 0;
 }

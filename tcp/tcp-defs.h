@@ -12,5 +12,6 @@
 
 typedef struct sockaddr sockaddr_t;
 typedef struct sockaddr_in sockaddr_in_t;
+typedef void (*tcp_server_callback_t)(int);
 
 #endif /* __TCP_DEFS_H__ */
