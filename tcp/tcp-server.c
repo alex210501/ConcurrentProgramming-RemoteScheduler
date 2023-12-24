@@ -1,4 +1,3 @@
-#include "tcp-defs.h"
 #include "tcp-server.h"
 
 #define MAX_BUF_SIZE (100)
