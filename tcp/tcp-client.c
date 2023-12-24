@@ -3,16 +3,15 @@
 #define MAX_BUF_SIZE (100)
 
 static void default_callback(int sockfd) {
-    char buf[MAX_BUF_SIZE];
     int n;
 
     for (int i = 0; i < 10; i++) {
-        snprintf(buf, MAX_BUF_SIZE, "Hello ");
+        Request_t req = { .action = DEACTIVATION, .task = 10 };
+        Answer_t ans;
 
-        write(sockfd, buf, strlen(buf));
-        memset(buf, 0, MAX_BUF_SIZE);
-        read(sockfd, buf, MAX_BUF_SIZE);
-        printf("Received from server : %s\n", buf);
+        write(sockfd, (void*)&req, sizeof(Request_t));
+        read(sockfd, (void*)&ans, sizeof(Answer_t));
+        printf("Received from server : %d\n", ans.error);
     }
 }
 

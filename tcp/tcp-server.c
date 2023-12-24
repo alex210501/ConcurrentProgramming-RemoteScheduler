@@ -3,19 +3,17 @@
 #define MAX_BUF_SIZE (100)
 
 static void default_callback(int connfd) {
-    char buf[MAX_BUF_SIZE];
-
     for (;;) {
-        memset(buf, 0, MAX_BUF_SIZE);
+        Request_t req;
+        Answer_t ans = { .error = TASK_DOES_NOT_EXIST };
 
         // Read data received by the client
-        read(connfd, buf, MAX_BUF_SIZE);
+        read(connfd, (void*)&req, sizeof(Request_t));
 
         // TODO - Debug print
-        printf("Data received: %s\n", buf);
+        printf("Data received: %d - %d\n", req.action, req.task);
 
-        snprintf(buf, MAX_BUF_SIZE, "Yep");
-        write(connfd, buf, strlen(buf));
+        write(connfd, (void*)&ans, sizeof(Answer_t));
     }    
 }
 
