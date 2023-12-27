@@ -1,6 +1,7 @@
 CC=gcc
 CFLAGS=-I.
 CLIENT_OBJ = client.o 
+SUPERVISOR_OBJ = supervisor.o
 DEPS = ./common/defs.h ./tcp/tcp-defs.h ./tcp/tcp-client.h
 
 %.o: %.c $(DEPS)
@@ -9,8 +10,8 @@ DEPS = ./common/defs.h ./tcp/tcp-defs.h ./tcp/tcp-client.h
 client: $(CLIENT_OBJ)
 	$(CC) -o client $^ $(CFLAGS)
 
-all: $(modules)
-	$(CC) -o program $^ $(CFLAGS)
+supervisor: $(SUPERVISOR_OBJ)
+	$(CC) -o supervisor $^ $(CFLAGS)	
 
 clean:
 	rm *.o
