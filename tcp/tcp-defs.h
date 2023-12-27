@@ -16,8 +16,7 @@ typedef struct sockaddr_in sockaddr_in_t;
 typedef void (*tcp_server_callback_t)(int);
 typedef void (*tcp_client_callback_t)(int);
 
-typedef union 
- {
+typedef union {
     struct {
         Actions_t action:3;
         int task:5;
