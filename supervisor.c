@@ -1,5 +1,16 @@
 #include "common/defs.h"
+#include "common/task.h"
 #include "tcp/tcp-server.h"
+
+CREATE_TASK(100);
+CREATE_TASK(200);
+CREATE_TASK(300);
+
+task_callback_t tasks[] = {
+    &task_0,
+    &task_1,
+    &task_2,
+};
 
 void tcp_server_callback(int connfd) {
     for (;;) {
