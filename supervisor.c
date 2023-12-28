@@ -1,8 +1,8 @@
+#include <pthread.h>
+
 #include "common/defs.h"
 #include "common/task.h"
 #include "tcp/tcp-server.h"
-
-#define TASKS_NUMBER (4)
 
 CREATE_TASK(100000)
 CREATE_TASK(200000)
@@ -16,10 +16,12 @@ task_info_t tasks[] = {
     { .callback = &task_3, .period = 20, },
 };
 
+scheduler_info_t scheduler_info;
+
 void tcp_server_callback(int connfd) {
     for (;;) {
         Request_t req;
-        Answer_t ans = { .error = TASK_DOES_NOT_EXIST };
+        Answer_t ans = { .error = SUCCESS };
 
         // Read data received by the client
         read(connfd, (void*)&req, sizeof(Request_t));
@@ -27,6 +29,33 @@ void tcp_server_callback(int connfd) {
         // TODO - Debug print
         printf("Data received: %d - %d\n", req.action, req.task);
 
+        // Check action
+        if (!ACTION_VALID(req.action)) {
+            printf("Invalid action %d!", req.action);
+            ans.error = INVALID_ACTION;
+            goto ERR;
+        } 
+        
+        if (req.task < 0 || req.task >= TASKS_NUMBER) {
+            printf("Task %d invalid!", req.task);
+            ans.error = TASK_DOES_NOT_EXIST;
+            goto ERR;
+        }
+
+        if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
+            ans.error = NOT_SCHEDULABLE;
+            goto ERR;
+        }
+
+        // TODO - start thread
+        pthread_t thread;
+        task_handler_arg_t arg = { 
+            .scheduler_info = scheduler_info, 
+            .callback = tasks[req.task].callback 
+        };
+        pthread_create(&thread, NULL, task_handler, (void*)&arg);
+
+ERR:
         write(connfd, (void*)&ans, sizeof(Answer_t));
     }
 }

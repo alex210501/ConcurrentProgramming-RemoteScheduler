@@ -4,7 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define BILLION  1000000000L;
+#define TASKS_NUMBER (4)
 
 // Macro used to create tasks
 #define CONCAT_IMPL( x, y ) x##y
@@ -14,6 +14,7 @@
         for(int i = 0; i < timeout; i++); \
         struct timespec request = { 0, 1 }; \
         nanosleep(&request, NULL); \
+        printf("%d\n", timeout); \
     } \
 
 
@@ -21,6 +22,16 @@ typedef unsigned long long task_time_t;
 typedef double task_cpu_usage_t;
 typedef unsigned long task_period_t;
 typedef void (*task_callback_t)(void);
+
+typedef struct {
+    task_cpu_usage_t cpu_usage;
+    int tasks_running[TASKS_NUMBER];
+} scheduler_info_t;
+
+typedef struct {
+    task_callback_t callback;
+    scheduler_info_t scheduler_info;
+} task_handler_arg_t;
 
 typedef struct {
     task_callback_t callback;
@@ -42,10 +53,15 @@ void measure_time(task_info_t tasks[], size_t size) {
     }
 }
 
-void task_handler(task_callback_t callback) {
+void* task_handler(void* arg) {
+    task_handler_arg_t* handler_arg = (task_handler_arg_t *)arg;
+
+    if (handler_arg == NULL || handler_arg->callback == NULL)
+        return NULL;
+
     // TODO - Add task to scheduler
 
-    callback();
+    handler_arg->callback();
 
     // TODO - Remove task from scheduler
 }
