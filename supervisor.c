@@ -2,14 +2,18 @@
 #include "common/task.h"
 #include "tcp/tcp-server.h"
 
-CREATE_TASK(100);
-CREATE_TASK(200);
-CREATE_TASK(300);
+#define TASKS_NUMBER (4)
 
-task_callback_t tasks[] = {
-    &task_0,
-    &task_1,
-    &task_2,
+CREATE_TASK(100000)
+CREATE_TASK(200000)
+CREATE_TASK(300000)
+CREATE_TASK(400000)
+
+task_info_t tasks[] = {
+    { .callback = &task_0, .period = 10, },
+    { .callback = &task_1, .period = 10, },
+    { .callback = &task_2, .period = 20, },
+    { .callback = &task_3, .period = 20, },
 };
 
 void tcp_server_callback(int connfd) {
@@ -28,6 +32,12 @@ void tcp_server_callback(int connfd) {
 }
 
 int main() {
+    measure_time(tasks, TASKS_NUMBER);
+
+    for (int i = 0; i < TASKS_NUMBER; i++) {
+        printf("Task %d - %lld - usage: %lf\n", i, tasks[i].time, tasks[i].cpu_usage);
+    }
+
     init_tcp_server(tcp_server_callback, PORT);
 
     return 0;
