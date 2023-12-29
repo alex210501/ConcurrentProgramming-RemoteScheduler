@@ -26,16 +26,18 @@ void* task_handler(void* arg) {
 
     rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
     running_task_arg_t running_task_arg = { .running = 1, .thread_id = *(handler_arg->thread_id) };
+    
     handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
     enqueue(q, (void*)&running_task_arg);
 
     while (running_task_arg.running) {
         handler_arg->task_info->callback();
-        sleep(1);
+        // sleep(1);
     }
-    printf("Not running....\n");
+
     dequeue(q);
     handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
+    free(handler_arg);
 }
 
 void tcp_server_callback(int connfd) {
@@ -71,16 +73,15 @@ void tcp_server_callback(int connfd) {
                 goto ERR;
             }
 
-
             pthread_t thread;
-            task_handler_arg_t arg = { 
-                .scheduler_info = &scheduler_info, 
-                .task_info = &tasks[req.task],
-                .task = req.task,
-                .thread_id = &thread,
-            };
+            task_handler_arg_t* arg = malloc(sizeof(task_handler_arg_t));
+            
+            arg->scheduler_info = &scheduler_info;
+            arg->task_info = &tasks[req.task];
+            arg->task = req.task;
+            arg->thread_id = &thread;
 
-            pthread_create(&thread, NULL, task_handler, (void*)&arg);
+            pthread_create(&thread, NULL, &task_handler, arg);
             break;
         case DEACTIVATION:
             rounded_queue_t* q = &scheduler_info.tasks_running[req.task];
