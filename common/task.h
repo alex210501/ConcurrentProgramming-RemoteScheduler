@@ -1,6 +1,7 @@
 #ifndef __TASK_H__
 #define __TASK_H__
 
+#include <pthread.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -14,7 +15,7 @@
 #define CREATE_TASK(timeout) \
     void CONCAT( task_, __COUNTER__ )(void) { \
         for(int i = 0; i < timeout; i++); \
-        struct timespec request = { 0, 1 }; \
+        struct timespec request = { 0, 1000 }; \
         nanosleep(&request, NULL); \
         printf("%d\n", timeout); \
     } \
@@ -26,9 +27,9 @@ typedef unsigned long task_period_t;
 typedef void (*task_callback_t)(void);
 
 typedef struct {
-    task_cpu_usage_t cpu_usage;
-    rounded_queue_t tasks_running[TASKS_NUMBER];
-} scheduler_info_t;
+    int running;
+    pthread_t thread_id;
+} running_task_arg_t;
 
 typedef struct {
     task_callback_t callback;
@@ -38,7 +39,13 @@ typedef struct {
 } task_info_t;
 
 typedef struct {
+    task_cpu_usage_t cpu_usage;
+    rounded_queue_t tasks_running[TASKS_NUMBER];
+} scheduler_info_t;
+
+typedef struct {
     int task;
+    pthread_t* thread_id;
     task_info_t* task_info;
     scheduler_info_t* scheduler_info;
 } task_handler_arg_t;

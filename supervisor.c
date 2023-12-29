@@ -24,16 +24,16 @@ void* task_handler(void* arg) {
     if (handler_arg == NULL || handler_arg->task_info == NULL)
         return NULL;
 
-    // TODO - Add task to scheduler
     rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
-    int* running = enqueue(q, 1);
+    running_task_arg_t running_task_arg = { .running = 1, .thread_id = *(handler_arg->thread_id) };
     handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
+    enqueue(q, (void*)&running_task_arg);
 
-    while (*running) {
+    while (running_task_arg.running) {
         handler_arg->task_info->callback();
+        sleep(1);
     }
-
-    // TODO - Remove task from scheduler
+    printf("Not running....\n");
     dequeue(q);
     handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
 }
@@ -77,17 +77,20 @@ void tcp_server_callback(int connfd) {
                 .scheduler_info = &scheduler_info, 
                 .task_info = &tasks[req.task],
                 .task = req.task,
+                .thread_id = &thread,
             };
 
             pthread_create(&thread, NULL, task_handler, (void*)&arg);
             break;
         case DEACTIVATION:
             rounded_queue_t* q = &scheduler_info.tasks_running[req.task];
-            printf("%p\n", q);
             // TODO - Manage if deactivate an unactivate task
 
-            if (!is_empty(q))
-                *get_top(q) = 0;
+            if (!is_empty(q)){
+                running_task_arg_t* arg = (running_task_arg_t*)get_top(q);
+                arg->running = 0;
+                pthread_join(arg->thread_id, NULL);
+            }
 
             break;
         default:

@@ -7,7 +7,7 @@ typedef struct {
     int head;
     int tail;
     int counter;
-    int arr[MAX_ELEMENT];
+    void* arr[MAX_ELEMENT];
 } rounded_queue_t;
 
 int is_empty(rounded_queue_t* q) {
@@ -17,31 +17,31 @@ int is_empty(rounded_queue_t* q) {
     return q->counter == 0;
 }
 
-int* get_top(rounded_queue_t* q) {
+void* get_top(rounded_queue_t* q) {
     if (q == NULL || q->counter == 0)
         return NULL;
 
-    return &q->arr[q->head];
+    return q->arr[q->head];
 }
 
-int* enqueue(rounded_queue_t* q, int element) {
+void* enqueue(rounded_queue_t* q, void* element) {
     if (q == NULL || q->counter == MAX_ELEMENT)
         return NULL;
     
     q->counter++;
     q->arr[q->tail] = element;
 
-    int* val = &q->arr[q->tail];
+    void* val = q->arr[q->tail];
     q->tail = (q->tail + 1) % MAX_ELEMENT;
 
     return val;
 }
 
-int dequeue(rounded_queue_t* q) {
+void* dequeue(rounded_queue_t* q) {
     if (q == NULL || q->counter == 0)
-        return -1;
+        return NULL;
 
-    int val = q->arr[q->head];
+    void* val = q->arr[q->head];
     q->counter--;
     q->head = (q->head + 1) % MAX_ELEMENT;
 
