@@ -4,6 +4,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "rounded_queue.h"
+
 #define TASKS_NUMBER (4)
 
 // Macro used to create tasks
@@ -25,12 +27,13 @@ typedef void (*task_callback_t)(void);
 
 typedef struct {
     task_cpu_usage_t cpu_usage;
-    int tasks_running[TASKS_NUMBER];
+    rounded_queue_t tasks_running[TASKS_NUMBER];
 } scheduler_info_t;
 
 typedef struct {
+    int task;
     task_callback_t callback;
-    scheduler_info_t scheduler_info;
+    scheduler_info_t* scheduler_info;
 } task_handler_arg_t;
 
 typedef struct {
@@ -60,10 +63,15 @@ void* task_handler(void* arg) {
         return NULL;
 
     // TODO - Add task to scheduler
+    rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
+    int* running = enqueue(q, 1);
 
-    handler_arg->callback();
+    while (*running) {
+        handler_arg->callback();
+    }
 
     // TODO - Remove task from scheduler
+    dequeue(q);
 }
 
 #endif /* __TASK_H__ */

@@ -47,15 +47,33 @@ void tcp_server_callback(int connfd) {
             goto ERR;
         }
 
-        // TODO - start thread
-        pthread_t thread;
-        task_handler_arg_t arg = { 
-            .scheduler_info = scheduler_info, 
-            .callback = tasks[req.task].callback 
-        };
-        pthread_create(&thread, NULL, task_handler, (void*)&arg);
+        switch (req.action)
+        {
+        case ACTIVATION:
+            pthread_t thread;
+            task_handler_arg_t arg = { 
+                .scheduler_info = &scheduler_info, 
+                .callback = tasks[req.task].callback,
+                .task = req.task,
+            };
+
+            pthread_create(&thread, NULL, task_handler, (void*)&arg);
+            break;
+        case DEACTIVATION:
+            rounded_queue_t* q = &scheduler_info.tasks_running[req.task];
+            printf("%p\n", q);
+            // TODO - Manage if deactivate an unactivate task
+
+            if (!is_empty(q))
+                *get_top(q) = 0;
+
+            break;
+        default:
+            break;
+        }
 
 ERR:
+
         write(connfd, (void*)&ans, sizeof(Answer_t));
     }
 }
