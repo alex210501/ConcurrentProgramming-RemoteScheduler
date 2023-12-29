@@ -18,6 +18,26 @@ task_info_t tasks[] = {
 
 scheduler_info_t scheduler_info;
 
+void* task_handler(void* arg) {
+    task_handler_arg_t* handler_arg = (task_handler_arg_t *)arg;
+
+    if (handler_arg == NULL || handler_arg->task_info == NULL)
+        return NULL;
+
+    // TODO - Add task to scheduler
+    rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
+    int* running = enqueue(q, 1);
+    handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
+
+    while (*running) {
+        handler_arg->task_info->callback();
+    }
+
+    // TODO - Remove task from scheduler
+    dequeue(q);
+    handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
+}
+
 void tcp_server_callback(int connfd) {
     for (;;) {
         Request_t req;
@@ -42,18 +62,20 @@ void tcp_server_callback(int connfd) {
             goto ERR;
         }
 
-        if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
-            ans.error = NOT_SCHEDULABLE;
-            goto ERR;
-        }
-
         switch (req.action)
         {
         case ACTIVATION:
+            // Check if it's schedulable
+            if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
+                ans.error = NOT_SCHEDULABLE;
+                goto ERR;
+            }
+
+
             pthread_t thread;
             task_handler_arg_t arg = { 
                 .scheduler_info = &scheduler_info, 
-                .callback = tasks[req.task].callback,
+                .task_info = &tasks[req.task],
                 .task = req.task,
             };
 
