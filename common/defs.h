@@ -6,6 +6,7 @@
 
 #define PORT (8080)
 #define ACTION_VALID(action) (action >= 0 && action < ACTIONS_MAX)
+#define RELY_ON_TASK(action) (action == ACTIVATION || action == DEACTIVATION)
 
 typedef enum {
     ACTIVATION = 0,

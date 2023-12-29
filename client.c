@@ -26,9 +26,10 @@ void tcp_client_callback(int sockfd) {
             continue;
         }
 
-        // TODO - Check if action is valid
-        printf("Choose an task - ");
-        scanf("%d", &task);
+        if (RELY_ON_TASK(action)) {
+            printf("Choose an task - ");
+            scanf("%d", &task);
+        }
 
         Request_t req = { .action = (Actions_t)action, .task = task };
         Answer_t ans;
@@ -40,6 +41,9 @@ void tcp_client_callback(int sockfd) {
         char result[25];
         errorToString(ans.error, result, sizeof(result));
         printf("Received from server : %s\n", result);
+
+        // If asked to exit, close the client
+        if (req.action == EXIT) break;
     }
 }
 

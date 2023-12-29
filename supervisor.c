@@ -49,6 +49,22 @@ void print_status(scheduler_info_t* info) {
     }
 }
 
+void deinit_tasks(scheduler_info_t* info) {
+    if (info == NULL) return;
+
+    for (int i = 0; i < TASKS_NUMBER; i++) {
+        rounded_queue_t* q = &(info->tasks_running[i]);
+
+        while (q->counter) {
+            running_task_arg_t* arg = get_top(q);
+
+            arg->running = 0;
+            pthread_join(arg->thread_id, NULL);
+            dequeue(q);
+        }
+    }
+}
+
 void tcp_server_callback(int connfd) {
     for (;;) {
         Request_t req;
@@ -67,11 +83,14 @@ void tcp_server_callback(int connfd) {
             goto ERR;
         } 
         
-        if (req.task < 0 || req.task >= TASKS_NUMBER) {
+        if (RELY_ON_TASK(req.action) && (req.task < 0 || req.task >= TASKS_NUMBER)) {
             printf("Task %d invalid!\n", req.task);
             ans.error = TASK_DOES_NOT_EXIST;
             goto ERR;
         }
+
+        // Exit if the client requested it
+        if (req.action == EXIT) break;
 
         switch (req.action) {
         case ACTIVATION:
@@ -123,6 +142,8 @@ int main() {
     }
 
     init_tcp_server(tcp_server_callback, PORT);
+
+    deinit_tasks(&scheduler_info);
 
     return 0;
 }
