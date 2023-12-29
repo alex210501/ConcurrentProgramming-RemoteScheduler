@@ -11,6 +11,7 @@ typedef enum {
     ACTIVATION = 0,
     DEACTIVATION,
     EXIT,
+    SHOW_STATUS,
     ACTIONS_MAX,
 } Actions_t;
 
@@ -29,6 +30,9 @@ void actionToString(Actions_t action, char* dest, size_t dest_size) {
         break;
     case DEACTIVATION:
         snprintf(dest, dest_size, "Deactivation");
+        break;
+    case SHOW_STATUS:
+        snprintf(dest, dest_size, "Show status");
         break;
     case EXIT:
         snprintf(dest, dest_size, "Exit");

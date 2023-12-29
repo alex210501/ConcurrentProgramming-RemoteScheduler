@@ -26,7 +26,7 @@ void* task_handler(void* arg) {
 
     rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
     running_task_arg_t running_task_arg = { .running = 1, .thread_id = *(handler_arg->thread_id) };
-    
+
     handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
     enqueue(q, (void*)&running_task_arg);
 
@@ -38,6 +38,15 @@ void* task_handler(void* arg) {
     dequeue(q);
     handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
     free(handler_arg);
+}
+
+void print_status(scheduler_info_t* info) {
+    printf("--- STATUS ---\n");
+    printf("CPU usage - %f\n", info->cpu_usage);
+
+    for (int i = 0; i < TASKS_NUMBER; i++) {
+        printf("Task %d - %d\n", i, info->tasks_running[i].counter);
+    }
 }
 
 void tcp_server_callback(int connfd) {
@@ -53,19 +62,18 @@ void tcp_server_callback(int connfd) {
 
         // Check action
         if (!ACTION_VALID(req.action)) {
-            printf("Invalid action %d!", req.action);
+            printf("Invalid action %d!\n", req.action);
             ans.error = INVALID_ACTION;
             goto ERR;
         } 
         
         if (req.task < 0 || req.task >= TASKS_NUMBER) {
-            printf("Task %d invalid!", req.task);
+            printf("Task %d invalid!\n", req.task);
             ans.error = TASK_DOES_NOT_EXIST;
             goto ERR;
         }
 
-        switch (req.action)
-        {
+        switch (req.action) {
         case ACTIVATION:
             // Check if it's schedulable
             if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
@@ -94,6 +102,9 @@ void tcp_server_callback(int connfd) {
             }
 
             break;
+        case SHOW_STATUS:
+            print_status(&scheduler_info);
+            break;
         default:
             break;
         }
@@ -108,7 +119,7 @@ int main() {
     measure_time(tasks, TASKS_NUMBER);
 
     for (int i = 0; i < TASKS_NUMBER; i++) {
-        printf("Task %d - %lld - usage: %lf\n", i, tasks[i].time, tasks[i].cpu_usage);
+        printf("Task %d - %lf - usage: %lf\n", i, tasks[i].time, tasks[i].cpu_usage);
     }
 
     init_tcp_server(tcp_server_callback, PORT);

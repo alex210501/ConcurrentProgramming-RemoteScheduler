@@ -3,7 +3,7 @@
 #include "tcp/tcp-client.h"
 
 Actions_t actions[] = {
-    ACTIVATION, DEACTIVATION, EXIT,
+    ACTIVATION, DEACTIVATION, EXIT, SHOW_STATUS,
 };
 
 void tcp_client_callback(int sockfd) {

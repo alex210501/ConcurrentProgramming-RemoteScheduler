@@ -17,11 +17,10 @@
         for(int i = 0; i < timeout; i++); \
         struct timespec request = { 0, 1000 }; \
         nanosleep(&request, NULL); \
-        printf("%d\n", timeout); \
     } \
 
 
-typedef unsigned long long task_time_t;
+typedef double task_time_t;
 typedef double task_cpu_usage_t;
 typedef unsigned long task_period_t;
 typedef void (*task_callback_t)(void);
@@ -58,7 +57,7 @@ void measure_time(task_info_t tasks[], size_t size) {
         tasks[i].callback();
         
         clock_gettime(CLOCK_MONOTONIC, &end);
-        tasks[i].time = (end.tv_sec - start.tv_sec) * 1000 + (end.tv_nsec - start.tv_nsec) / 1000000;
+        tasks[i].time = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
         tasks[i].cpu_usage = (double)tasks[i].time / tasks[i].period;
     }
 }
