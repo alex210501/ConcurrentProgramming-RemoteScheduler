@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-I.
 CLIENT_OBJ = client.o 
 SUPERVISOR_OBJ = supervisor.o
-DEPS = ./common/defs.h ./common/task.h ./common/rounded_queue.h ./tcp/tcp-defs.h ./tcp/tcp-client.h
+DEPS = ./common/defs.h ./common/task.h ./common/queue.h ./tcp/tcp-defs.h ./tcp/tcp-client.h
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)

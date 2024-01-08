@@ -5,7 +5,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "rounded_queue.h"
+#include "queue.h"
 
 #define TASKS_NUMBER       (4)
 #define MAX_TASKS  (20)
@@ -45,7 +45,7 @@ typedef struct {
 
 typedef struct {
     task_cpu_usage_t cpu_usage;
-    rounded_queue_t tasks_running[TASKS_NUMBER];
+    queue_t tasks_running[TASKS_NUMBER];
     pthread_mutex_t lock;
 } scheduler_info_t;
 

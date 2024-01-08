@@ -66,7 +66,7 @@ void* task_handler(void* arg) {
     if (handler_arg == NULL || handler_arg->task_info == NULL)
         return NULL;
 
-    rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
+    queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
 
     pthread_mutex_lock(&handler_arg->scheduler_info->lock);
     enqueue(q, (void*)handler_arg);
@@ -101,7 +101,7 @@ void deinit_tasks(scheduler_info_t* info) {
     if (info == NULL) return;
 
     for (int i = 0; i < TASKS_NUMBER; i++) {
-        rounded_queue_t* q = &(info->tasks_running[i]);
+        queue_t* q = &(info->tasks_running[i]);
 
         while (q->counter) {
             task_handler_arg_t* arg = get_top(q);
@@ -157,7 +157,7 @@ void tcp_server_callback(int connfd) {
             pthread_create(&arg->thread_id, NULL, &task_handler, arg);
             break;
         case DEACTIVATION:
-            rounded_queue_t* q = &scheduler_info.tasks_running[req.task];
+            queue_t* q = &scheduler_info.tasks_running[req.task];
 
             // If the queue is empty, then no such task is activated right now
             if (is_empty(q)) {
