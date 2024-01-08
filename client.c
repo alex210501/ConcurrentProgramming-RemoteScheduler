@@ -1,4 +1,5 @@
 #include "common/defs.h"
+#include "common/task.h"
 #include "tcp/tcp-defs.h"
 #include "tcp/tcp-client.h"
 
@@ -41,6 +42,18 @@ void tcp_client_callback(int sockfd) {
         char result[25];
         errorToString(ans.error, result, sizeof(result));
         printf("Received from server : %s\n", result);
+
+        // If the status is returned
+        if (req.action == SHOW_STATUS) {
+            task_status_t* status = (task_status_t*)ans.frame;
+
+            printf("--- Status Received ---\n");
+            printf("CPU usage - %lf\n", status->cpu_usage);
+
+            for(int i = 0; i < status->num_tasks; i++) {
+                printf("Task %d - %d\n", status->tasks[i].task_id, status->tasks[i].task_count);
+            }
+        }
 
         // If asked to exit, close the client
         if (req.action == EXIT) break;

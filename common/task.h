@@ -8,6 +8,7 @@
 #include "rounded_queue.h"
 
 #define TASKS_NUMBER       (4)
+#define MAX_TASKS  (20)
 
 
 // Macro used to create tasks
@@ -27,9 +28,13 @@ typedef unsigned long task_period_t;
 typedef void (*task_callback_t)(void);
 
 typedef struct {
-    int running;
-    pthread_t thread_id;
-} running_task_arg_t;
+    double cpu_usage;
+    int num_tasks;
+    struct {
+        int task_id;
+        int task_count;
+    } tasks[MAX_TASKS]; 
+} task_status_t;
 
 typedef struct {
     task_callback_t callback;

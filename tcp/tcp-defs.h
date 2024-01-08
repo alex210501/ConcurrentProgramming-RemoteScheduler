@@ -11,6 +11,8 @@
 
 #include "../common/defs.h"
 
+#define MAX_LENGTH (1024)
+
 typedef struct sockaddr sockaddr_t;
 typedef struct sockaddr_in sockaddr_in_t;
 typedef void (*tcp_server_callback_t)(int);
@@ -28,7 +30,8 @@ typedef union {
     struct {
         Error_t error;
     };
-    uint8_t frame;
+    size_t length;
+    uint8_t frame[MAX_LENGTH];
 } Answer_t;
 
 #endif /* __TCP_DEFS_H__ */

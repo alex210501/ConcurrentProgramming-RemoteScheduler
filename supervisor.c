@@ -8,10 +8,10 @@
 // #define SHOW_PRINT_TASK  // Define if we print something in the task
 #define MAX_TASK_TO_DELETE (10)
 
-CREATE_TASK(1000000)
-CREATE_TASK(2000000)
-CREATE_TASK(3000000)
-CREATE_TASK(4000000)
+CREATE_TASK(100000)
+CREATE_TASK(200000)
+CREATE_TASK(300000)
+CREATE_TASK(400000)
 
 struct {
     task_handler_arg_t* buf[MAX_TASK_TO_DELETE];
@@ -30,10 +30,22 @@ task_info_t tasks[] = {
 
 scheduler_info_t scheduler_info;
 
+void get_tasks_status(scheduler_info_t* info, task_status_t* tasks_status) {
+    if (tasks_status == NULL) return;
+
+    tasks_status->cpu_usage = info->cpu_usage;
+    tasks_status->num_tasks = TASKS_NUMBER;
+
+    for (int i = 0; i < TASKS_NUMBER; i++) {
+        tasks_status->tasks[i].task_id = i;
+        tasks_status->tasks[i].task_count = info->tasks_running[i].counter;
+    }
+}
+
 void* delete_task_thread(void* arg) {
     for (;;) {
         sem_wait(&task_to_delete.full);
-        sem_wait(&task_to_delete.empty);
+        sem_post(&task_to_delete.empty);
         
         // Put thread ID instead
         task_handler_arg_t* arg = task_to_delete.buf[task_to_delete.out];
@@ -156,7 +168,13 @@ void tcp_server_callback(int connfd) {
 
             break;
         case SHOW_STATUS:
+            task_status_t status;
+
             print_status(&scheduler_info);
+            get_tasks_status(&scheduler_info, &status);
+
+            memcpy(ans.frame, &status, sizeof(task_status_t));
+            // ans.frame = (uint8_t *)status;
             break;
         default:
             break;
