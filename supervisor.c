@@ -5,6 +5,7 @@
 #include "common/task.h"
 #include "tcp/tcp-server.h"
 
+// #define SHOW_PRINT_TASK  // Define if we print something in the task
 #define MAX_TASK_TO_DELETE (10)
 
 CREATE_TASK(1000000)
@@ -39,7 +40,6 @@ void* delete_task_thread(void* arg) {
         task_to_delete.out = (task_to_delete.out + 1) % MAX_TASK_TO_DELETE;
 
         // Stop the running task
-        printf("Thread ID: %d\n", arg->thread_id);
         arg->running = 0;
         pthread_join(arg->thread_id, NULL);
 
@@ -57,13 +57,15 @@ void* task_handler(void* arg) {
     rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
 
     handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
-    printf("Thread ID: %d\n", handler_arg->thread_id);
     enqueue(q, (void*)handler_arg);
 
     while (handler_arg->running) {
         handler_arg->task_info->callback();
+    
+#ifdef SHOW_PRINT_TASK
         printf("Task %d\n", handler_arg->task);
         sleep(1);
+#endif
     }
 
     dequeue(q);
@@ -71,7 +73,7 @@ void* task_handler(void* arg) {
 }
 
 void print_status(scheduler_info_t* info) {
-    printf("--- STATUS ---\n");
+    printf("\n--- STATUS ---\n");
     printf("CPU usage - %f\n", info->cpu_usage);
 
     for (int i = 0; i < TASKS_NUMBER; i++) {
@@ -120,9 +122,6 @@ void tcp_server_callback(int connfd) {
             goto ERR;
         }
 
-        // Exit if the client requested it
-        if (req.action == EXIT) break;
-
         switch (req.action) {
         case ACTIVATION:
             // Check if it's schedulable
@@ -140,7 +139,6 @@ void tcp_server_callback(int connfd) {
             arg->task = req.task;
 
             pthread_create(&arg->thread_id, NULL, &task_handler, arg);
-            printf("Thread ID: %d\n", arg->thread_id);
             break;
         case DEACTIVATION:
             rounded_queue_t* q = &scheduler_info.tasks_running[req.task];
@@ -165,8 +163,10 @@ void tcp_server_callback(int connfd) {
         }
 
 ERR:
-
         write(connfd, (void*)&ans, sizeof(Answer_t));
+
+        // Exit if the client requested it
+        if (req.action == EXIT) break;
     }
 }
 
