@@ -9,7 +9,7 @@
 #define MAX_TASK_TO_DELETE (10)
 
 CREATE_TASK(100000)
-CREATE_TASK(200000)
+CREATE_TASK(2000)
 CREATE_TASK(300000)
 CREATE_TASK(400000)
 
@@ -68,8 +68,10 @@ void* task_handler(void* arg) {
 
     rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
 
-    handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
+    pthread_mutex_lock(&handler_arg->scheduler_info->lock);
     enqueue(q, (void*)handler_arg);
+    handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
+    pthread_mutex_unlock(&handler_arg->scheduler_info->lock);
 
     while (handler_arg->running) {
         handler_arg->task_info->callback();
@@ -80,8 +82,10 @@ void* task_handler(void* arg) {
 #endif
     }
 
+    pthread_mutex_lock(&handler_arg->scheduler_info->lock);
     dequeue(q);
     handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
+    pthread_mutex_unlock(&handler_arg->scheduler_info->lock);
 }
 
 void print_status(scheduler_info_t* info) {
@@ -137,10 +141,10 @@ void tcp_server_callback(int connfd) {
         switch (req.action) {
         case ACTIVATION:
             // Check if it's schedulable
-            if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
-                ans.error = NOT_SCHEDULABLE;
-                goto ERR;
-            }
+            // if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
+            //     ans.error = NOT_SCHEDULABLE;
+            //     goto ERR;
+            // }
 
             // pthread_t thread;
             task_handler_arg_t* arg = malloc(sizeof(task_handler_arg_t));
@@ -174,7 +178,7 @@ void tcp_server_callback(int connfd) {
             get_tasks_status(&scheduler_info, &status);
 
             memcpy(ans.frame, &status, sizeof(task_status_t));
-            // ans.frame = (uint8_t *)status;
+
             break;
         default:
             break;
@@ -192,6 +196,9 @@ int main() {
     // Initialise the thread to delete the deactivated tasks
     pthread_t delete_task_id;
     pthread_create(&delete_task_id, NULL, &delete_task_thread, NULL);
+
+    // Initialise lock
+    pthread_mutex_init(&scheduler_info.lock, NULL);
 
     // Initialise task to delete
     sem_init(&task_to_delete.empty, 0, MAX_TASK_TO_DELETE);

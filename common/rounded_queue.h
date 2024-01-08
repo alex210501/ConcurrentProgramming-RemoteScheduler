@@ -1,7 +1,7 @@
 #ifndef __ROUNDED_QUEUE_H__
 #define __ROUNDED_QUEUE_H__
 
-#define MAX_ELEMENT (20)
+#define MAX_ELEMENT (50)
 
 typedef struct {
     int head;
