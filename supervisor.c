@@ -9,7 +9,7 @@
 #define MAX_TASK_TO_DELETE (10)
 
 CREATE_TASK(100000)
-CREATE_TASK(2000)
+CREATE_TASK(200000)
 CREATE_TASK(300000)
 CREATE_TASK(400000)
 
@@ -17,8 +17,7 @@ struct {
     task_handler_arg_t* buf[MAX_TASK_TO_DELETE];
     sem_t empty;
     sem_t full;
-    uint8_t in;
-    uint8_t out;
+    queue_t queue;
 } task_to_delete;
 
 task_info_t tasks[] = {
@@ -48,8 +47,7 @@ void* delete_task_thread(void* arg) {
         sem_post(&task_to_delete.empty);
         
         // Put thread ID instead
-        task_handler_arg_t* arg = task_to_delete.buf[task_to_delete.out];
-        task_to_delete.out = (task_to_delete.out + 1) % MAX_TASK_TO_DELETE;
+        task_handler_arg_t* arg = dequeue(&task_to_delete.queue);
 
         // Stop the running task
         arg->running = 0;
@@ -141,10 +139,10 @@ void tcp_server_callback(int connfd) {
         switch (req.action) {
         case ACTIVATION:
             // Check if it's schedulable
-            // if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
-            //     ans.error = NOT_SCHEDULABLE;
-            //     goto ERR;
-            // }
+            if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
+                ans.error = NOT_SCHEDULABLE;
+                goto ERR;
+            }
 
             // pthread_t thread;
             task_handler_arg_t* arg = malloc(sizeof(task_handler_arg_t));
@@ -167,8 +165,7 @@ void tcp_server_callback(int connfd) {
 
             sem_wait(&task_to_delete.empty);
             sem_post(&task_to_delete.full);
-            task_to_delete.buf[task_to_delete.in] = (task_handler_arg_t*)get_top(q);
-            task_to_delete.in = (task_to_delete.in + 1) % MAX_TASK_TO_DELETE;
+            enqueue(&task_to_delete.queue, get_top(q));
 
             break;
         case SHOW_STATUS:
