@@ -21,6 +21,7 @@ typedef enum {
     TASK_DOES_NOT_EXIST,
     NOT_SCHEDULABLE,
     INVALID_ACTION,
+    TASK_NOT_ACTIVATED,
     ERRORS_MAX,
 } Error_t;
 
@@ -56,6 +57,9 @@ void errorToString(Error_t error, char* dest, size_t dest_size) {
         break;
     case INVALID_ACTION:
         snprintf(dest, dest_size, "INVALID ACTION");
+        break;
+    case TASK_NOT_ACTIVATED:
+        snprintf(dest, dest_size, "TASK NOT ACTIVATED");
         break;
     default:
         break;

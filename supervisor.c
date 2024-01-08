@@ -1,13 +1,24 @@
 #include <pthread.h>
+#include <semaphore.h>
 
 #include "common/defs.h"
 #include "common/task.h"
 #include "tcp/tcp-server.h"
 
-CREATE_TASK(100000)
-CREATE_TASK(200000)
-CREATE_TASK(300000)
-CREATE_TASK(400000)
+#define MAX_TASK_TO_DELETE (10)
+
+CREATE_TASK(1000000)
+CREATE_TASK(2000000)
+CREATE_TASK(3000000)
+CREATE_TASK(4000000)
+
+struct {
+    task_handler_arg_t* buf[MAX_TASK_TO_DELETE];
+    sem_t empty;
+    sem_t full;
+    uint8_t in;
+    uint8_t out;
+} task_to_delete;
 
 task_info_t tasks[] = {
     { .callback = &task_0, .period = 10, },
@@ -18,6 +29,25 @@ task_info_t tasks[] = {
 
 scheduler_info_t scheduler_info;
 
+void* delete_task_thread(void* arg) {
+    for (;;) {
+        sem_wait(&task_to_delete.full);
+        sem_wait(&task_to_delete.empty);
+        
+        // Put thread ID instead
+        task_handler_arg_t* arg = task_to_delete.buf[task_to_delete.out];
+        task_to_delete.out = (task_to_delete.out + 1) % MAX_TASK_TO_DELETE;
+
+        // Stop the running task
+        printf("Thread ID: %d\n", arg->thread_id);
+        arg->running = 0;
+        pthread_join(arg->thread_id, NULL);
+
+        // Free the args resources
+        free(arg);
+    }
+}
+
 void* task_handler(void* arg) {
     task_handler_arg_t* handler_arg = (task_handler_arg_t *)arg;
 
@@ -25,19 +55,19 @@ void* task_handler(void* arg) {
         return NULL;
 
     rounded_queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
-    running_task_arg_t running_task_arg = { .running = 1, .thread_id = *(handler_arg->thread_id) };
 
     handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
-    enqueue(q, (void*)&running_task_arg);
+    printf("Thread ID: %d\n", handler_arg->thread_id);
+    enqueue(q, (void*)handler_arg);
 
-    while (running_task_arg.running) {
+    while (handler_arg->running) {
         handler_arg->task_info->callback();
-        // sleep(1);
+        printf("Task %d\n", handler_arg->task);
+        sleep(1);
     }
 
     dequeue(q);
     handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
-    free(handler_arg);
 }
 
 void print_status(scheduler_info_t* info) {
@@ -56,11 +86,12 @@ void deinit_tasks(scheduler_info_t* info) {
         rounded_queue_t* q = &(info->tasks_running[i]);
 
         while (q->counter) {
-            running_task_arg_t* arg = get_top(q);
+            task_handler_arg_t* arg = get_top(q);
 
             arg->running = 0;
             pthread_join(arg->thread_id, NULL);
             dequeue(q);
+            free(arg);
         }
     }
 }
@@ -100,25 +131,30 @@ void tcp_server_callback(int connfd) {
                 goto ERR;
             }
 
-            pthread_t thread;
+            // pthread_t thread;
             task_handler_arg_t* arg = malloc(sizeof(task_handler_arg_t));
             
+            arg->running = 1;
             arg->scheduler_info = &scheduler_info;
             arg->task_info = &tasks[req.task];
             arg->task = req.task;
-            arg->thread_id = &thread;
 
-            pthread_create(&thread, NULL, &task_handler, arg);
+            pthread_create(&arg->thread_id, NULL, &task_handler, arg);
+            printf("Thread ID: %d\n", arg->thread_id);
             break;
         case DEACTIVATION:
             rounded_queue_t* q = &scheduler_info.tasks_running[req.task];
-            // TODO - Manage if deactivate an unactivate task
 
-            if (!is_empty(q)){
-                running_task_arg_t* arg = (running_task_arg_t*)get_top(q);
-                arg->running = 0;
-                pthread_join(arg->thread_id, NULL);
+            // If the queue is empty, then no such task is activated right now
+            if (is_empty(q)) {
+                ans.error = TASK_NOT_ACTIVATED;
+                goto ERR;
             }
+
+            sem_wait(&task_to_delete.empty);
+            sem_post(&task_to_delete.full);
+            task_to_delete.buf[task_to_delete.in] = (task_handler_arg_t*)get_top(q);
+            task_to_delete.in = (task_to_delete.in + 1) % MAX_TASK_TO_DELETE;
 
             break;
         case SHOW_STATUS:
@@ -135,6 +171,14 @@ ERR:
 }
 
 int main() {
+    // Initialise the thread to delete the deactivated tasks
+    pthread_t delete_task_id;
+    pthread_create(&delete_task_id, NULL, &delete_task_thread, NULL);
+
+    // Initialise task to delete
+    sem_init(&task_to_delete.empty, 0, MAX_TASK_TO_DELETE);
+    sem_init(&task_to_delete.full, 0, 0);
+
     measure_time(tasks, TASKS_NUMBER);
 
     for (int i = 0; i < TASKS_NUMBER; i++) {
@@ -144,6 +188,8 @@ int main() {
     init_tcp_server(tcp_server_callback, PORT);
 
     deinit_tasks(&scheduler_info);
+    sem_destroy(&task_to_delete.empty);
+    sem_destroy(&task_to_delete.full);
 
     return 0;
 }

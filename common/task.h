@@ -7,7 +7,8 @@
 
 #include "rounded_queue.h"
 
-#define TASKS_NUMBER (4)
+#define TASKS_NUMBER       (4)
+
 
 // Macro used to create tasks
 #define CONCAT_IMPL( x, y ) x##y
@@ -44,7 +45,8 @@ typedef struct {
 
 typedef struct {
     int task;
-    pthread_t* thread_id;
+    int running;
+    pthread_t thread_id;
     task_info_t* task_info;
     scheduler_info_t* scheduler_info;
 } task_handler_arg_t;
