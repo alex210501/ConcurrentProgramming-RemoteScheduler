@@ -7,6 +7,8 @@ DEPS = ./common/defs.h ./common/task.h ./common/queue.h ./tcp/tcp-defs.h ./tcp/t
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
+all: supervisor client
+
 client: $(CLIENT_OBJ)
 	$(CC) -o client $^ $(CFLAGS)
 

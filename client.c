@@ -47,7 +47,7 @@ void tcp_client_callback(int sockfd) {
         if (req.action == SHOW_STATUS) {
             task_status_t* status = (task_status_t*)ans.frame;
 
-            printf("--- Status Received ---\n");
+            printf("\n--- Status Received ---\n");
             printf("CPU usage - %lf\n", status->cpu_usage);
 
             for(int i = 0; i < status->num_tasks; i++) {

@@ -36,7 +36,7 @@ typedef struct {
 
 typedef struct {
     task_callback_t callback;
-    task_time_t time;
+    task_time_t execution_time;
     task_cpu_usage_t cpu_usage;
     task_period_t period;
 } task_info_t;
@@ -63,9 +63,13 @@ void measure_time(task_info_t tasks[], size_t size) {
         tasks[i].callback();
         
         clock_gettime(CLOCK_MONOTONIC, &end);
-        tasks[i].time = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
-        tasks[i].cpu_usage = (double)tasks[i].time / tasks[i].period;
+        tasks[i].execution_time = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
+        tasks[i].cpu_usage = (double)tasks[i].execution_time / tasks[i].period;
     }
+}
+
+int is_schedulable(double cpu_usage, double task_cpu_usage) {
+    return (cpu_usage + task_cpu_usage) <= 1.0;
 }
 
 #endif /* __TASK_H__ */

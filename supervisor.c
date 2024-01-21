@@ -15,6 +15,7 @@ CREATE_TASK(400000)
 
 struct {
     task_handler_arg_t* buf[MAX_TASK_TO_DELETE];
+    pthread_t thread_id;
     sem_t empty;
     sem_t full;
     queue_t queue;
@@ -24,7 +25,7 @@ task_info_t tasks[] = {
     { .callback = &task_0, .period = 10.0, },
     { .callback = &task_1, .period = 10.0, },
     { .callback = &task_2, .period = 20.0, },
-    { .callback = &task_3, .period = 20.0, },
+    { .callback = &task_3, .period = 5.0, },
 };
 
 scheduler_info_t scheduler_info;
@@ -65,17 +66,20 @@ void* task_handler(void* arg) {
         return NULL;
 
     queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
-    double time_to_sleep_ms = handler_arg->task_info->period - handler_arg->task_info->time;
+    double time_to_sleep_ms = handler_arg->task_info->period - handler_arg->task_info->execution_time;
     struct timespec request = { 0, time_to_sleep_ms * 1000000 };
 
-    pthread_mutex_lock(&handler_arg->scheduler_info->lock);
-    enqueue(q, (void*)handler_arg);
-    handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
-    pthread_mutex_unlock(&handler_arg->scheduler_info->lock);
+    // Update CPU usage
+    if (pthread_mutex_lock(&handler_arg->scheduler_info->lock) == 0) {
+        enqueue(q, (void*)handler_arg);
+        handler_arg->scheduler_info->cpu_usage += handler_arg->task_info->cpu_usage;
+        pthread_mutex_unlock(&handler_arg->scheduler_info->lock);   
+    }
 
+    // Run periodically
     while (handler_arg->running) {
         handler_arg->task_info->callback();
-        nanosleep(&request, NULL); \
+        nanosleep(&request, NULL);
     
 #ifdef SHOW_PRINT_TASK
         printf("Task %d\n", handler_arg->task);
@@ -83,10 +87,12 @@ void* task_handler(void* arg) {
 #endif
     }
 
-    pthread_mutex_lock(&handler_arg->scheduler_info->lock);
-    dequeue(q);
-    handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
-    pthread_mutex_unlock(&handler_arg->scheduler_info->lock);
+    // Update CPU usage
+    if (pthread_mutex_lock(&handler_arg->scheduler_info->lock) == 0) {
+        dequeue(q);
+        handler_arg->scheduler_info->cpu_usage -= handler_arg->task_info->cpu_usage;
+        pthread_mutex_unlock(&handler_arg->scheduler_info->lock);
+    }
 }
 
 void print_status(scheduler_info_t* info) {
@@ -142,14 +148,15 @@ void tcp_server_callback(int connfd) {
         switch (req.action) {
         case ACTIVATION:
             // Check if it's schedulable
-            if (scheduler_info.cpu_usage + tasks[req.task].cpu_usage > 1.0) {
+            if (!is_schedulable(scheduler_info.cpu_usage, tasks[req.task].cpu_usage)) {
                 ans.error = NOT_SCHEDULABLE;
                 goto ERR;
             }
 
-            // pthread_t thread;
+            // Freed in the delete task thread
             task_handler_arg_t* arg = malloc(sizeof(task_handler_arg_t));
             
+            // Initialize parameters
             arg->running = 1;
             arg->scheduler_info = &scheduler_info;
             arg->task_info = &tasks[req.task];
@@ -194,8 +201,7 @@ ERR:
 
 int main() {
     // Initialise the thread to delete the deactivated tasks
-    pthread_t delete_task_id;
-    pthread_create(&delete_task_id, NULL, &delete_task_thread, NULL);
+    pthread_create(&task_to_delete.thread_id, NULL, &delete_task_thread, NULL);
 
     // Initialise lock
     pthread_mutex_init(&scheduler_info.lock, NULL);
@@ -204,15 +210,20 @@ int main() {
     sem_init(&task_to_delete.empty, 0, MAX_TASK_TO_DELETE);
     sem_init(&task_to_delete.full, 0, 0);
 
+    // Measure the execution time of each task
     measure_time(tasks, TASKS_NUMBER);
 
+    // DEBUG - Print execution time and CPU usage of each task
     for (int i = 0; i < TASKS_NUMBER; i++) {
-        printf("Task %d - %lf - usage: %lf\n", i, tasks[i].time, tasks[i].cpu_usage);
+        printf("Task %d - %lf - usage: %lf\n", i, tasks[i].execution_time, tasks[i].cpu_usage);
     }
 
+    // Initialize the TCP server
     init_tcp_server(tcp_server_callback, PORT);
 
+    // Deinit all tasks and destroy lokcs, and semaphore
     deinit_tasks(&scheduler_info);
+    pthread_mutex_destroy(&scheduler_info.lock);
     sem_destroy(&task_to_delete.empty);
     sem_destroy(&task_to_delete.full);
 

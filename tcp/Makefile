@@ -12,5 +12,6 @@ server: $(SERVER_OBJ)
 
 client: $(CLIENT_OBJ)
 	$(CC) -o tcp-client $^ $(CFLAGS)
+	
 clean:
 	rm *.o
