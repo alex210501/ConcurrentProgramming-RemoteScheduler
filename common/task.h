@@ -17,14 +17,12 @@
 #define CREATE_TASK(timeout) \
     void CONCAT( task_, __COUNTER__ )(void) { \
         for(int i = 0; i < timeout; i++); \
-        struct timespec request = { 0, 1000 }; \
-        nanosleep(&request, NULL); \
     } \
 
 
 typedef double task_time_t;
 typedef double task_cpu_usage_t;
-typedef unsigned long task_period_t;
+typedef double task_period_t;
 typedef void (*task_callback_t)(void);
 
 typedef struct {

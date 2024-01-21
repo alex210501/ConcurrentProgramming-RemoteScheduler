@@ -21,10 +21,10 @@ struct {
 } task_to_delete;
 
 task_info_t tasks[] = {
-    { .callback = &task_0, .period = 10, },
-    { .callback = &task_1, .period = 10, },
-    { .callback = &task_2, .period = 20, },
-    { .callback = &task_3, .period = 20, },
+    { .callback = &task_0, .period = 10.0, },
+    { .callback = &task_1, .period = 10.0, },
+    { .callback = &task_2, .period = 20.0, },
+    { .callback = &task_3, .period = 20.0, },
 };
 
 scheduler_info_t scheduler_info;
@@ -45,7 +45,7 @@ void* delete_task_thread(void* arg) {
     for (;;) {
         sem_wait(&task_to_delete.full);
         sem_post(&task_to_delete.empty);
-        
+
         // Put thread ID instead
         task_handler_arg_t* arg = dequeue(&task_to_delete.queue);
 
@@ -65,6 +65,8 @@ void* task_handler(void* arg) {
         return NULL;
 
     queue_t* q = &(handler_arg->scheduler_info->tasks_running[handler_arg->task]);
+    double time_to_sleep_ms = handler_arg->task_info->period - handler_arg->task_info->time;
+    struct timespec request = { 0, time_to_sleep_ms * 1000000 };
 
     pthread_mutex_lock(&handler_arg->scheduler_info->lock);
     enqueue(q, (void*)handler_arg);
@@ -73,6 +75,7 @@ void* task_handler(void* arg) {
 
     while (handler_arg->running) {
         handler_arg->task_info->callback();
+        nanosleep(&request, NULL); \
     
 #ifdef SHOW_PRINT_TASK
         printf("Task %d\n", handler_arg->task);
