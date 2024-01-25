@@ -26,11 +26,8 @@ typedef union {
     uint8_t frame;
 } Request_t;
 
-typedef union {
-    struct {
-        Error_t error;
-    };
-    size_t length;
+typedef struct {
+    Error_t error;
     uint8_t frame[MAX_LENGTH];
 } Answer_t;
 

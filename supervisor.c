@@ -8,24 +8,25 @@
 // #define SHOW_PRINT_TASK  // Define if we print something in the task
 #define MAX_TASK_TO_DELETE (10)
 
-CREATE_TASK(100000)
-CREATE_TASK(200000)
-CREATE_TASK(300000)
-CREATE_TASK(400000)
+CREATE_TASK(1000000)
+CREATE_TASK(1000000)
+CREATE_TASK(1000000)
+CREATE_TASK(1000000)
 
 struct {
     task_handler_arg_t* buf[MAX_TASK_TO_DELETE];
     pthread_t thread_id;
     sem_t empty;
     sem_t full;
+    pthread_mutex_t lock;
     queue_t queue;
 } task_to_delete;
 
 task_info_t tasks[] = {
     { .callback = &task_0, .period = 10.0, },
-    { .callback = &task_1, .period = 10.0, },
-    { .callback = &task_2, .period = 20.0, },
-    { .callback = &task_3, .period = 5.0, },
+    { .callback = &task_1, .period = 20.0, },
+    { .callback = &task_2, .period = 30.0, },
+    { .callback = &task_3, .period = 40.0, },
 };
 
 scheduler_info_t scheduler_info;
@@ -45,10 +46,17 @@ void get_tasks_status(scheduler_info_t* info, task_status_t* tasks_status) {
 void* delete_task_thread(void* arg) {
     for (;;) {
         sem_wait(&task_to_delete.full);
-        sem_post(&task_to_delete.empty);
 
         // Put thread ID instead
+        if (pthread_mutex_lock(&task_to_delete.lock) != 0) {
+            printf("Error while getting the lock!");
+            return NULL;
+        }
+
         task_handler_arg_t* arg = dequeue(&task_to_delete.queue);
+
+        pthread_mutex_unlock(&task_to_delete.lock);
+        sem_post(&task_to_delete.empty);
 
         // Stop the running task
         arg->running = 0;
@@ -174,8 +182,12 @@ void tcp_server_callback(int connfd) {
             }
 
             sem_wait(&task_to_delete.empty);
-            sem_post(&task_to_delete.full);
-            enqueue(&task_to_delete.queue, get_top(q));
+
+            if (pthread_mutex_lock(&task_to_delete.lock) == 0) {
+                enqueue(&task_to_delete.queue, get_top(q));
+                pthread_mutex_unlock(&task_to_delete.lock);   
+                sem_post(&task_to_delete.full);
+            }
 
             break;
         case SHOW_STATUS:
@@ -205,6 +217,7 @@ int main() {
 
     // Initialise lock
     pthread_mutex_init(&scheduler_info.lock, NULL);
+    pthread_mutex_init(&task_to_delete.lock, NULL);
 
     // Initialise task to delete
     sem_init(&task_to_delete.empty, 0, MAX_TASK_TO_DELETE);
@@ -224,6 +237,7 @@ int main() {
     // Deinit all tasks and destroy lokcs, and semaphore
     deinit_tasks(&scheduler_info);
     pthread_mutex_destroy(&scheduler_info.lock);
+    pthread_mutex_destroy(&task_to_delete.lock);
     sem_destroy(&task_to_delete.empty);
     sem_destroy(&task_to_delete.full);
 
